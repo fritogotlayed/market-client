@@ -1,2 +1,4 @@
 # market-client
-Repo for code related to simple packet sniffing and local file scraping
+Repo for code related to simple packet sniffing and local file scraping.
+
+TODO: write the readme!
