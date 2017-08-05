@@ -1,0 +1,7 @@
+# Please make sure to pin the version of libraries when adding them.
+# Three easy ways to do this is by using either "pip search <package name>".
+# You can run "pip install <package name>" then running "pip freeze" to
+# capture the package and all dependencies with their currently installed
+# version numbers. Lastly you can just "pip install <package name>" and look
+# for a line similar to "Successfully installed Flask-0.12.2 Jinja2-2.9.6 ..."
+# and format the information as below.
