@@ -10,3 +10,6 @@ Market-Client: [![Build Status](https://travis-ci.org/AOUtils-Team/market-client
 Backend-Aggregator: [![Build Status](https://travis-ci.org/AOUtils-Team/backend-aggregator.svg?branch=master)](https://travis-ci.org/AOUtils-Team/backend-aggregator)
 
 TODO: write the readme!
+
+### Helpful Stuff
+* netstat -a -b -p UDP|TCP
