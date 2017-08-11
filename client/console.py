@@ -6,31 +6,34 @@ For full license details please see the LICENSE file located in the root folder
 of the project.
 """
 from __future__ import print_function
+# Standard Libs
+import logging
 import os
 
-from time import sleep
+from os.path import basename, abspath
 
-from client.objects import Eavesdropper
+# Other Libs
+import yaml
+
+from client.objects import Overlord
+from client import logging_helper
+
+
+def _get_current_dir():
+    full_path = abspath(__file__)
+    idx = full_path.index(basename(full_path))
+    return full_path[:idx]
 
 
 def main():
     """Entry point for the market data packet capture client."""
-    print('Console app is running on PID %s.' % os.getpid())
-    ports = [60552, 49252]
-    eavesdroppers = []
-    for port in ports:
-        eavesdropper = Eavesdropper(port)
-        eavesdroppers.append(eavesdropper)
-        eavesdropper.start_listening()
+    config = yaml.load(open(_get_current_dir() + 'config.yml'))
+    logging_helper.initialize(config)
 
-    try:
-        while True:
-            sleep(1)
-    except KeyboardInterrupt:
-        print('Gracefully shutting down client.')
-        for eavesdropper in eavesdroppers:
-            eavesdropper.stop_listening()
-
+    logging.info('Console app is running on PID %s.', os.getpid())
+    lord = Overlord(config=config)
+    lord.oversee()
+    logging.info('Console app shut down.')
 
 if __name__ == '__main__':
     main()

@@ -12,4 +12,4 @@
 #disable=
 
 # Useful Link: http://pylint-messages.wikidot.com/all-codes
-disable=too-few-public-methods
+disable=too-few-public-methods,global-statement

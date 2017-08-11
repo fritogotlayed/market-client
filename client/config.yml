@@ -1,0 +1,28 @@
+# General logging configuration
+logging:
+  # Can be semicolon (;) separated
+  # console - use a console debugger
+  # rolling - use a rolling file debugger (useful for tail)
+  type: console
+  level: DEBUG
+  file_name:
+  file_path:
+  message_format: '%(asctime)s - %(process)s - %(thread)s - %(levelname)s - %(module)s - %(funcName)s - %(lineno)s - %(message)s'
+  file_count: 3
+  max_file_bytes: 1048576
+
+app:
+  overlord:
+    # Time for overlord to sleep between looking for open albion online ports
+    sleep_time: 10
+
+  # Type of scrape mode to use when gathering market information.
+  # Options:
+  #    * packet_capture - Listen to the traffic as network packets are transmitted
+  scrape_mode: packet_capture
+
+  # When scrape_mode is "packet_capture", type of packet handler to use for open albion online ports. This is case sensitive.
+  # Options:
+  #    * NoOp:    No operation is taken
+  #    * Print:   The packet bytes are printed to standard out
+  packet_handler: Print
