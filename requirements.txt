@@ -5,3 +5,4 @@
 # version numbers. Lastly you can just "pip install <package name>" and look
 # for a line similar to "Successfully installed Flask-0.12.2 Jinja2-2.9.6 ..."
 # and format the information as below.
+pyyaml==3.12
