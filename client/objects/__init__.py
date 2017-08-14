@@ -7,25 +7,19 @@ of the project.
 """
 import logging
 import os
-import select
-import socket
 import threading
 
-from time import sleep
 
 from client.objects.packet_handlers import PacketHandler
-from . import net_scanner
+if os.name == 'nt':
+    from client.objects.windows import PCap
 
 
 class Eavesdropper(object):
     """Listens on the specified port and captures the UDP traffic"""
-    _BUFFER_SIZE = 2**16
-    _BIND_ADDRESS = '0.0.0.0'
-
-    def __init__(self, listen_port, mode, config=None):
-        self._listen_port = listen_port  # type: int
-        self._mode = mode
-        self._socket = None  # type: socket.socket
+    def __init__(self, device_id, config=None):
+        self._device_id = device_id
+        self._pcap = None  # type: PCap
         self._thread_run = True  # type: bool
         self._thread = None  # type: threading.Thread
         self._config = config or {}
@@ -49,6 +43,7 @@ class Eavesdropper(object):
             self._handler = PacketHandler.get_packet_handler(self._config)
 
         if not self._thread:
+            self._pcap = PCap(self._device_id, self._handler.handle_packet)
             logging.debug('Starting listener thread.')
             self._thread = threading.Thread(target=self._listen)
             self._thread_run = True
@@ -62,32 +57,20 @@ class Eavesdropper(object):
         """
         if self._thread:
             self._thread_run = False
+        if self._pcap:
+            self._pcap.stop()
 
     def _listen(self):
         if os.environ.get('AOUTILS_MC_TESTING', False):
             return
 
-        protocol = (socket.IPPROTO_TCP if self._mode.upper() == 'TCP'
-                    else socket.IPPROTO_UDP)
-        if self._mode == 'TCP':
-            return
-        self._socket = socket.socket(socket.AF_INET,
-                                     socket.SOCK_RAW,
-                                     protocol)
-        self._socket.bind((self._BIND_ADDRESS, self._listen_port))
-
-        while self._thread_run:
-            self._socket.setblocking(0)
-            ready = select.select([self._socket], [], [], 1)
-            if ready[0]:
-                self._handler.handle_packet(
-                    *self._socket.recvfrom(self._BUFFER_SIZE),
-                    port=self._listen_port)
+        # while self._thread_run:
+        logging.debug('Starting PCap listener.')
+        self._pcap.start()
 
     def _cleanup(self):
-        if self._socket:
-            self._socket.close()
-            self._socket = None
+        if self._pcap:
+            self._pcap.stop()
 
 
 class Overlord(object):
@@ -95,26 +78,32 @@ class Overlord(object):
     DEFAULT_SLEEP_TIME = 5
 
     def __init__(self, config=None):
-        self._eavesdroppers = {}
+        self._eavesdroppers = []
         self._config = config or {}
+        self._running = False
 
     def oversee(self):
         """Starts the overlord on whatever scrape methodology is configured
 
         This is a blocking operation.
         """
-        try:
-            while True:
-                if self._config['app']['scrape_mode'] == 'packet_capture':
-                    self._process_packet_scraping()
+        self._running = True
+        if self._config['app']['scrape_mode'] == 'packet_capture':
+            self._process_packet_scraping()
 
-                sleep(self.sleep_time)
+        try:
+            logging.info(
+                'Press the Enter key or ctrl+c to gracefully shut down.')
+            _ = input()
+            self._running = False
         except KeyboardInterrupt:
+            pass
+        finally:
             logging.debug('Gracefully closing eavesdroppers.')
-            keys = list(self._eavesdroppers.keys())
-            for key in keys:
-                self._eavesdroppers[key].stop_listening()
-                del self._eavesdroppers[key]
+            eavesdroppers = list(self._eavesdroppers)
+            for eavesdropper in eavesdroppers:
+                eavesdropper.stop_listening()
+                self._eavesdroppers.remove(eavesdropper)
 
     def _process_packet_scraping(self):
         """Starts the overlords port listening process.
@@ -122,25 +111,40 @@ class Overlord(object):
         This is a blocking operation. Ports will be updated based on whatever
         values are configured in the supplied configuration."""
         logging.debug('beginning albion scan.')
-        scanned_ports = net_scanner.find_albion_ports()
-        known_ports = list(self._eavesdroppers.keys())
 
-        for port, mode in scanned_ports:
-            if port not in known_ports:
-                logging.debug('Adding eavesdropper for port %s.', port)
-                eavesdropper = Eavesdropper(
-                    port, mode, config=self._config)
-                self._eavesdroppers[port] = eavesdropper
+        devices_list = PCap.list_devices()
+        device_names = self._config['app']['scrape_devices']
+
+        if len(device_names) == 1:
+            if device_names[0].lower() == 'all':
+                logging.debug('User specified all devices for capture.')
+                device_names = [d['name'] for d in devices_list]
+
+        for dev in devices_list:
+            if dev['name'] in device_names:
+                logging.debug('Starting eavesdropper for device %s.',
+                              dev['name'])
+                eavesdropper = Eavesdropper(dev['id'], self._config)
+                self._eavesdroppers.append(eavesdropper)
                 eavesdropper.start_listening()
-
-        ports = [p for p, _ in scanned_ports]
-        for known_port in known_ports:
-            if known_port not in ports:
-                logging.debug('Removing eavesdropper on port %s.',
-                              known_port)
-                eavesdropper = self._eavesdroppers[known_port]
-                eavesdropper.stop_listening()
-                del self._eavesdroppers[known_port]
+        # NOTE: Leaving the below code as it will get re-purposed when we begin
+        #       acting on captured packets
+        # for port, mode in scanned_ports:
+        #     if port not in known_ports:
+        #         logging.debug('Adding eavesdropper for port %s.', port)
+        #         eavesdropper = Eavesdropper(
+        #             port, mode, config=self._config)
+        #         self._eavesdroppers[port] = eavesdropper
+        #         eavesdropper.start_listening()
+        #
+        # ports = [p for p, _ in scanned_ports]
+        # for known_port in known_ports:
+        #     if known_port not in ports:
+        #         logging.debug('Removing eavesdropper on port %s.',
+        #                       known_port)
+        #         eavesdropper = self._eavesdroppers[known_port]
+        #         eavesdropper.stop_listening()
+        #         del self._eavesdroppers[known_port]
 
         logging.debug('finished albion scan.')
 
@@ -152,6 +156,6 @@ class Overlord(object):
         :rtype: int
         """
         try:
-            return self._config['app']['overlord']['sleep_time']
+            return self._config['app']['port_scan_interval']
         except KeyError:
             return self.DEFAULT_SLEEP_TIME

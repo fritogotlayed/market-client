@@ -16,11 +16,12 @@ class PacketHandler(object):
     Defines the contract with which all packet handlers should follow.
     """
     @abc.abstractmethod
-    def handle_packet(self, data, source, **kwargs):
+    def handle_packet(self, param, header, data, **kwargs):
         """Provides a common signature for handling data packets.
 
+        :param param: ???
+        :param header: The packet header data
         :param data: The data packet
-        :param source: The originator of the data packet
         :param kwargs: Any additional arguments that the handler implementation
                        may use.
         """
@@ -69,7 +70,7 @@ class NoOpPacketHandler(PacketHandler):
     not perform any action on the packets thus removing the need for a
     developer to have a version of the backend-aggregator available.
     """
-    def handle_packet(self, data, source, **kwargs):
+    def handle_packet(self, param, header, data, **kwargs):
         """Handles the packet by doing nothing.
 
         :param data: The data packet
@@ -89,7 +90,7 @@ class PrintPacketHandler(PacketHandler):
     Intended mainly for use as a debugging packet handler. This handler will
     print all supplied packets to standard out.
     """
-    def handle_packet(self, data, source, **kwargs):
+    def handle_packet(self, param, header, data, **kwargs):
         """Handles the packet by printing it's contents to stdout
 
         :param data: The data packet
@@ -101,6 +102,6 @@ class PrintPacketHandler(PacketHandler):
                               received on.
         """
         if 'port' in kwargs:
-            print('Port %s: %s' % (kwargs['port'], (data, source)))
+            print('Port %s: %s' % (kwargs['port'], data))
         else:
-            print((data, source))
+            print(data)

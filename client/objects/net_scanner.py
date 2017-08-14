@@ -28,12 +28,12 @@ def _windows_port_lookup():
     tcp_output = subprocess.check_output(
         ['netstat', '-a', '-b', '-e', '-n', '-p', 'TCP'],
         universal_newlines=True)
-    ports.extend(_process_windows_output_for_ports(udp_output, 'UDP'))
-    ports.extend(_process_windows_output_for_ports(tcp_output, 'TCP'))
+    ports.extend(_process_windows_output_for_ports(udp_output))
+    ports.extend(_process_windows_output_for_ports(tcp_output))
     return ports
 
 
-def _process_windows_output_for_ports(output, protocol):
+def _process_windows_output_for_ports(output):
     ports = []
     processing = False
     last_line = ''
@@ -47,7 +47,7 @@ def _process_windows_output_for_ports(output, protocol):
         if 'Albion-Online.exe' in line:
             start_idx = last_line.index(':') + 1
             stop_idx = last_line.index(' ', start_idx)
-            ports.append((int(last_line[start_idx:stop_idx]), protocol))
+            ports.append(int(last_line[start_idx:stop_idx]))
 
     return ports
 
